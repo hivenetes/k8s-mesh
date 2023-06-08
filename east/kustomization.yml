@@ -2,3 +2,4 @@ resources:
   - ../base
   - podinfo.yml
   - frontend.yml
+  - patch.yml
