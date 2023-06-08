@@ -19,7 +19,7 @@ kind: Service
 metadata:
   name: podinfo
 ---
-apiVersion: autoscaling/v2beta1
+apiVersion: autoscaling/v2beta2
 kind: HorizontalPodAutoscaler
 metadata:
   name: podinfo

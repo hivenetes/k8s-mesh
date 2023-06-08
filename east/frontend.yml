@@ -9,4 +9,4 @@ spec:
       - name: external
         env:
         - name: SERVICE
-          value: podinfo-west
+          value: podinfo-east
