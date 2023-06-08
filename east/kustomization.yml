@@ -1,4 +1,4 @@
-bases:
+resources:
   - ../base
   - podinfo.yml
   - frontend.yml

@@ -1,4 +1,4 @@
-bases:
+resources:
   - github.com/stefanprodan/podinfo/kustomize?ref=4.0.2&timeout=90s
 
 resources:
