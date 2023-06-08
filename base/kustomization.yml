@@ -4,6 +4,4 @@ bases:
 resources:
   - frontend.yml
   - ns.yml
-
-patches:
   - patch.yml
