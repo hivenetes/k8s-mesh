@@ -2,9 +2,17 @@
 
 ## IMPORTANT: Check prerequsites.sh into install the cli tooling
 
-# Create DigitalOcean Kubernetes(DOKS) Clusters in two regions ams3 and lon1
+# Create DigitalOcean Kubernetes(DOKS) Clusters in lon1(west)
 doctl kubernetes cluster create west --region lon1 --count 3 --size s-8vcpu-16gb
+doctl kubernetes cluster kubeconfig save <cluster-id>
+# Rename the context just for ease of demo
+kubectl config rename-context do-lon1-west west
+
+# Create DigitalOcean Kubernetes(DOKS) Clusters in ams3(east)
 doctl kubernetes cluster create east --region ams3 --count 3 --size s-8vcpu-16gb
+doctl kubernetes cluster kubeconfig save <cluster-id>
+# Rename the cluster context just for ease of demo
+kubectl config rename-context do-ams3-east east
 
 # Linkerd requires a shared trust anchor to exist between the installations in all clusters 
 # that communicate with each other. This is used to encrypt the traffic between clusters and authorize 
@@ -49,7 +57,7 @@ done
 linkerd --context=east multicluster link --cluster-name east | \
 kubectl --context=west apply -f -
 
-# Install Emojivoto services on both clusters
+# Install emojivoto microservice application
 for ctx in west east; do
   echo "Adding emojivoto services on cluster: ${ctx} ........."
   kubectl config use-context ${ctx}
@@ -57,8 +65,9 @@ for ctx in west east; do
   echo "-------------"
 done
 
-# Delete certain deployments in the west cluster(for demo purpose)
+# Delete certain deployments and services in the west cluster(for demo purpose)
 kubectl --context=west -n emojivoto delete deploy voting web emoji
+kubectl --context=west -n emojivoto delete svc voting-svc web-svc emoji-svc
 
 # Delete certain deployments in the east cluster(for demo purpose) and 
 kubectl --context=east -n emojivoto delete deploy vote-bot
@@ -75,12 +84,23 @@ kubectl --context=west -n emojivoto get endpoints web-svc-east \
 kubectl --context=east -n linkerd-multicluster get svc linkerd-gateway \
   -o "custom-columns=GATEWAY_IP:.status.loadBalancer.ingress[*].ip"
 
+# To verify `mTLS`:
+
+```bash
+linkerd --context=west -n emojivoto viz tap deploy/vote-bot | \
+  grep "$(kubectl --context=east -n linkerd-multicluster get svc linkerd-gateway \
+    -o "custom-columns=GATEWAY_IP:.status.loadBalancer.ingress[*].ip")"
+```
+
 # Apply curl deployment (optional)
 kubectl --context=west apply -f curl-deployment.yml
 
+# Retrieve the clusterIP of `web-svc-east`
+kubectl --context=west -n emojivoto get svc web-svc-east -o=jsonpath='{.spec.clusterIP}' && echo
+
 # Edit vote-bot deployment in the west cluster to point to web-svc-east
-# Replace <CLUSTERIP> with the IP obtained from the previous command
-kubectl --context=west edit deploy vote-bot
+# Replace <clusterIP> with the IP obtained from the previous command
+kubectl set env deployment/vote-bot -n emojivoto WEB_HOST=<clusterIP>:80 --context west
 
 # Open and inspect Linkerd dashboards
 linkerd viz dashboard --context west --port 50750 &
